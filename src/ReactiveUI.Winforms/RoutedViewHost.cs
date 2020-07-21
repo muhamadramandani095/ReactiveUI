@@ -49,47 +49,48 @@ namespace ReactiveUI.Winforms
             Control viewLastAdded = null;
             _disposables.Add(vmAndContract.Subscribe(
                 x =>
-            {
-                // clear all hosted controls (view or default content)
-                SuspendLayout();
-                Controls.Clear();
-
-                if (viewLastAdded != null)
                 {
-                    viewLastAdded.Dispose();
-                }
+                    // clear all hosted controls (view or default content)
+                    SuspendLayout();
+                    Controls.Clear();
 
-                if (x.ViewModel == null)
-                {
-                    if (DefaultContent != null)
+                    if (viewLastAdded != null)
                     {
-                        InitView(DefaultContent);
-                        Controls.Add(DefaultContent);
+                        viewLastAdded.Dispose();
                     }
 
+                    if (x.ViewModel == null)
+                    {
+                        if (DefaultContent != null)
+                        {
+                            InitView(DefaultContent);
+                            Controls.Add(DefaultContent);
+                        }
+
+                        ResumeLayout();
+                        return;
+                    }
+
+                    IViewLocator viewLocator = ViewLocator ?? ReactiveUI.ViewLocator.Current;
+                    IViewFor? view = viewLocator.ResolveView(x.ViewModel, x.Contract);
+                    if (view != null)
+                    {
+                        view.ViewModel = x.ViewModel;
+
+                        viewLastAdded = InitView((Control)view);
+                    }
+
+                    Controls.Add(viewLastAdded);
                     ResumeLayout();
-                    return;
-                }
-
-                IViewLocator viewLocator = ViewLocator ?? ReactiveUI.ViewLocator.Current;
-                IViewFor? view = viewLocator.ResolveView(x.ViewModel, x.Contract);
-                if (view != null)
-                {
-                    view.ViewModel = x.ViewModel;
-
-                    viewLastAdded = InitView((Control)view);
-                }
-
-                Controls.Add(viewLastAdded);
-                ResumeLayout();
-            }, RxApp.DefaultExceptionHandler.OnNext));
+                },
+                RxApp.DefaultExceptionHandler.OnNext));
         }
 
         /// <inheritdoc/>
-        public event PropertyChangingEventHandler PropertyChanging;
+        public event PropertyChangingEventHandler? PropertyChanging;
 
         /// <inheritdoc/>
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
         /// Gets or sets the default content.
@@ -110,7 +111,7 @@ namespace ReactiveUI.Winforms
         /// </summary>
         [Category("ReactiveUI")]
         [Description("The router.")]
-        public RoutingState Router
+        public RoutingState? Router
         {
             get => _router;
             set => this.RaiseAndSetIfChanged(ref _router, value);
